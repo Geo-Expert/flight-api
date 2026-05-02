@@ -1,0 +1,12 @@
+{
+  "name": "tlv-flight-finder",
+  "version": "1.0.0",
+  "description": "TLV round-trip flight finder via SerpAPI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

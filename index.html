@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TLV Flight Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0d1117;--s2:#131a24;
+  --b1:#1e2d40;--b2:#243550;--b3:#2e4464;
+  --a:#3ecf8e;--a2:#2ab578;--a3:rgba(62,207,142,.1);--a4:rgba(62,207,142,.18);
+  --txt:#dde6f0;--txt2:#7f96b2;--txt3:#445566;
+  --warn:#f5a623;--danger:#f76565;
+  --mono:'Space Mono',monospace;--sans:'Outfit',sans-serif;
+  --radius:8px;
+}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--txt)}
+body{display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;
+  background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;flex-wrap:wrap;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:31px;height:31px;background:var(--a);border-radius:6px;display:grid;place-items:center}
+.brand-icon svg{width:16px;height:16px;fill:var(--bg)}
+.brand-name{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.08em}
+.brand-sub{font-size:11px;color:var(--txt3);font-family:var(--mono)}
+.server-pill{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--radius);padding:6px 12px;flex-wrap:wrap;gap:6px}
+.server-pill label{font-size:11px;font-family:var(--mono);color:var(--txt3);white-space:nowrap}
+.server-pill input{background:transparent;border:none;color:var(--txt);font-family:var(--mono);font-size:11px;outline:none;width:200px}
+.server-pill input::placeholder{color:var(--b3)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--b3);flex-shrink:0;transition:background .3s}
+.dot.ok{background:var(--a)}.dot.err{background:var(--danger)}
+.key-pill{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--radius);padding:6px 12px}
+.key-pill label{font-size:11px;font-family:var(--mono);color:var(--txt3);white-space:nowrap}
+.key-pill input{background:transparent;border:none;color:var(--txt);font-family:var(--mono);font-size:11px;outline:none;width:200px}
+.key-pill input::placeholder{color:var(--b3)}
+.keydot{width:8px;height:8px;border-radius:50%;background:var(--b3);flex-shrink:0;transition:background .3s}
+.keydot.ok{background:var(--a)}
+.api-link{font-size:11px;font-family:var(--mono);color:var(--a2);text-decoration:none;opacity:.8;white-space:nowrap}
+.api-link:hover{opacity:1}
+
+/* ── LAYOUT ── */
+.body{display:flex;flex:1;overflow:hidden}
+.sidebar{width:300px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--b1);overflow-y:auto;padding:16px 14px}
+.main{flex:1;overflow-y:auto;padding:24px 26px}
+
+/* ── SIDEBAR ── */
+.slabel{font-size:10px;font-family:var(--mono);color:var(--txt3);letter-spacing:.14em;text-transform:uppercase;margin:16px 0 7px}
+.slabel:first-child{margin-top:0}
+
+.dest-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px}
+.dbtn{background:var(--s2);border:1px solid var(--b1);border-radius:7px;padding:7px 9px;cursor:pointer;text-align:left;transition:all .13s;color:var(--txt)}
+.dbtn:hover{border-color:var(--b2)}.dbtn.on{border-color:var(--a);background:var(--a3)}
+.dbtn .dc{font-size:12px;font-weight:500}.dbtn .di{font-size:10px;font-family:var(--mono);color:var(--txt3)}
+.dbtn.on .di{color:var(--a2)}
+
+.add-row{display:flex;gap:6px;margin-bottom:6px}
+.add-row input{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--txt);font-size:12px;padding:6px 9px;outline:none;font-family:var(--sans)}
+.add-row input:focus{border-color:var(--b2)}.add-row input::placeholder{color:var(--txt3)}
+.add-row button{background:transparent;border:1px solid var(--b2);border-radius:6px;color:var(--txt2);padding:0 11px;cursor:pointer;font-size:14px;transition:all .13s}
+.add-row button:hover{border-color:var(--a);color:var(--a)}
+
+.tags{display:flex;flex-wrap:wrap;gap:4px;min-height:14px}
+.tag{display:inline-flex;align-items:center;gap:4px;background:var(--a4);border:1px solid rgba(62,207,142,.28);color:var(--a);font-size:11px;font-family:var(--mono);padding:2px 7px;border-radius:4px}
+.tag .x{cursor:pointer;opacity:.6;font-size:12px}.tag .x:hover{opacity:1}
+
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.field label{display:block;font-size:10px;font-family:var(--mono);color:var(--txt3);margin-bottom:3px;letter-spacing:.05em}
+.field input[type=date]{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--txt);font-family:var(--mono);font-size:11px;padding:6px 8px;outline:none;cursor:pointer}
+.field input[type=date]:focus{border-color:var(--b2)}
+
+.nrow{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.nrow span{font-size:11px;color:var(--txt2);min-width:56px;font-family:var(--mono)}
+.nrow input[type=range]{flex:1;accent-color:var(--a);cursor:pointer}
+.nval{font-size:12px;font-family:var(--mono);color:var(--a);min-width:20px;text-align:right}
+
+.srow{display:flex;gap:5px}
+.sbtn{flex:1;padding:7px 4px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--txt2);font-size:11px;font-family:var(--mono);cursor:pointer;text-align:center;transition:all .13s}
+.sbtn:hover{border-color:var(--b2)}.sbtn.on{border-color:var(--a);background:var(--a3);color:var(--a)}
+
+/* ── 2-slot time filter ── */
+.time-slots{display:flex;flex-direction:column;gap:5px}
+.tslot{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--b1);border-radius:7px;background:var(--s2);cursor:pointer;transition:all .13s}
+.tslot:hover{border-color:var(--b2)}.tslot.on{border-color:var(--a);background:var(--a3)}
+.tslot-dot{width:8px;height:8px;border-radius:50%;background:var(--b2);flex-shrink:0}
+.tslot.on .tslot-dot{background:var(--a)}
+.tslot-name{font-size:13px;color:var(--txt);font-weight:500}
+.tslot-time{font-size:11px;font-family:var(--mono);color:var(--txt3);margin-left:auto}
+.tslot.on .tslot-time{color:var(--a2)}
+
+.hint{font-size:11px;font-family:var(--mono);color:var(--txt3);background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:8px 10px;margin-top:12px;line-height:1.6}
+.hint span{color:var(--warn)}.hint a{color:var(--a);text-decoration:none}
+
+.go-btn{width:100%;margin-top:12px;padding:13px;background:var(--a);color:var(--bg);border:none;border-radius:var(--radius);font-size:13px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;cursor:pointer;transition:background .15s}
+.go-btn:hover{background:#4ee3a0}.go-btn:disabled{opacity:.4;cursor:not-allowed;background:var(--a)}
+
+/* ── MAIN ── */
+.main-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.main-hd h2{font-size:19px;font-weight:600;letter-spacing:-.2px}
+.main-hd p{font-size:12px;color:var(--txt2);margin-top:2px}
+.sort-row{display:flex;align-items:center;gap:6px}
+.sort-lbl{font-size:11px;font-family:var(--mono);color:var(--txt3)}
+.sort-opt{font-size:11px;font-family:var(--mono);padding:5px 10px;border:1px solid var(--b1);border-radius:5px;background:transparent;color:var(--txt2);cursor:pointer;transition:all .13s}
+.sort-opt:hover{border-color:var(--b2)}.sort-opt.on{border-color:var(--a);background:var(--a3);color:var(--a)}
+
+.prog-wrap{margin-bottom:14px}
+.prog-bar{height:2px;background:var(--b1);border-radius:1px;overflow:hidden}
+.prog-fill{height:100%;background:var(--a);border-radius:1px;transition:width .3s;width:0%}
+.prog-lbl{font-size:11px;font-family:var(--mono);color:var(--txt3);margin-top:5px}
+
+/* ── RESULTS BY DESTINATION ── */
+.dest-section{margin-bottom:28px}
+.dest-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--b1)}
+.dest-header-left{display:flex;align-items:center;gap:10px}
+.dest-name{font-size:17px;font-weight:600;letter-spacing:-.1px}
+.dest-iata{font-size:12px;font-family:var(--mono);color:var(--txt3)}
+.dest-cheapest{font-size:12px;font-family:var(--mono);color:var(--a)}
+.dest-count{font-size:11px;font-family:var(--mono);color:var(--txt3)}
+
+.results-grid{display:grid;gap:8px}
+.rcard{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:14px 17px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;transition:border-color .13s}
+.rcard:hover{border-color:var(--b2)}.rcard.best{border-color:rgba(62,207,142,.4)}
+.best-badge{font-size:10px;font-family:var(--mono);background:var(--a);color:var(--bg);padding:2px 6px;border-radius:3px;margin-bottom:7px;display:inline-block;font-weight:700}
+.rairline{font-size:13px;font-weight:500;color:var(--txt)}
+.rairline-sub{font-size:11px;color:var(--txt2);margin-top:2px}
+.rmeta{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.rmeta-item{font-size:11px;font-family:var(--mono);color:var(--txt3)}
+.rmeta-item b{color:var(--txt2);font-weight:400}
+.rstop{display:inline-block;font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;margin-top:6px}
+.rstop.d{background:rgba(62,207,142,.12);color:var(--a)}
+.rstop.s1{background:rgba(245,166,35,.12);color:var(--warn)}
+.rstop.s2{background:rgba(247,101,101,.12);color:var(--danger)}
+.rprice-wrap{text-align:right}
+.rprice-n{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--a);line-height:1}
+.rprice-s{font-size:10px;font-family:var(--mono);color:var(--txt3);margin-top:2px}
+.rlink{display:block;font-size:11px;font-family:var(--mono);color:var(--a2);text-decoration:none;opacity:.8;white-space:nowrap;margin-top:9px}
+.rlink:hover{opacity:1;color:var(--a)}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px 20px;text-align:center;color:var(--txt3)}
+.empty .icon{font-size:42px;margin-bottom:14px;opacity:.5}
+.empty h3{font-size:15px;color:var(--txt2);font-weight:500;margin-bottom:6px}
+.empty p{font-size:13px;line-height:1.7;max-width:360px}.empty a{color:var(--a);text-decoration:none}
+
+.loader{display:flex;align-items:center;gap:12px;padding:50px 0}
+.spin{width:20px;height:20px;border:2px solid var(--b2);border-top-color:var(--a);border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader p{font-family:var(--mono);font-size:12px;color:var(--txt3)}
+
+.errbox{background:rgba(247,101,101,.08);border:1px solid rgba(247,101,101,.28);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--danger);line-height:1.6;margin-bottom:12px}
+
+@media(max-width:700px){
+  .body{flex-direction:column}
+  .sidebar{width:100%;overflow-y:visible;border-right:none;border-bottom:1px solid var(--b1);max-height:none}
+  .main{padding:14px}
+  .topbar{padding:10px 14px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">TLV FLIGHT FINDER</div>
+      <div class="brand-sub">Round-trip from Tel Aviv</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <a class="api-link" href="https://serpapi.com/users/sign_up" target="_blank">Get free SerpAPI key →</a>
+    <div class="server-pill">
+      <div class="dot" id="serverDot"></div>
+      <label>SERVER</label>
+      <input id="serverUrl" type="text" placeholder="http://localhost:3333" oninput="onServerChange()"/>
+    </div>
+    <div class="key-pill">
+      <div class="keydot" id="keyDot"></div>
+      <label>API KEY</label>
+      <input id="apiKey" type="password" placeholder="SerpAPI key (if not set on server)" oninput="onKeyChange()"/>
+    </div>
+  </div>
+</div>
+
+<div class="body">
+<aside class="sidebar">
+
+  <div class="slabel">Destinations</div>
+  <div class="dest-grid" id="destGrid"></div>
+  <div class="add-row">
+    <input id="customIn" type="text" placeholder="IATA code (e.g. DUB, CPH)" maxlength="10"/>
+    <button onclick="addCustom()">+</button>
+  </div>
+  <div class="tags" id="tags"></div>
+
+  <div class="slabel" style="margin-top:14px">Travel window</div>
+  <div class="field-row">
+    <div class="field"><label>EARLIEST OUT</label><input type="date" id="dateFrom"/></div>
+    <div class="field"><label>LATEST RETURN</label><input type="date" id="dateTo"/></div>
+  </div>
+
+  <div class="slabel" style="margin-top:13px">Trip length (nights)</div>
+  <div class="nrow"><span>MIN</span><input type="range" id="minN" min="1" max="30" value="3" oninput="syncN()"/><span class="nval" id="minNv">3</span></div>
+  <div class="nrow"><span>MAX</span><input type="range" id="maxN" min="1" max="30" value="10" oninput="syncN()"/><span class="nval" id="maxNv">10</span></div>
+
+  <div class="slabel">Max stops</div>
+  <div class="srow" id="stopsRow"></div>
+
+  <div class="slabel">Departure time</div>
+  <div class="time-slots" id="timeSlots"></div>
+
+  <div class="hint">1 API credit per destination.<br>Free tier = <span>250/month</span> · <a href="https://serpapi.com" target="_blank">serpapi.com</a></div>
+  <button class="go-btn" id="goBtn" onclick="doSearch()">SEARCH FLIGHTS</button>
+
+</aside>
+
+<main class="main">
+  <div class="main-hd">
+    <div>
+      <h2>Round-trip fares from TLV</h2>
+      <p>Live prices from Google Flights, grouped by destination</p>
+    </div>
+    <div class="sort-row" id="sortRow" style="display:none">
+      <span class="sort-lbl">SORT WITHIN DEST</span>
+      <button class="sort-opt on" id="sPrice" onclick="setSort('price')">Price</button>
+      <button class="sort-opt" id="sDate" onclick="setSort('date')">Date</button>
+    </div>
+  </div>
+  <div id="progWrap" style="display:none" class="prog-wrap">
+    <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+    <div class="prog-lbl" id="progLbl">Searching…</div>
+  </div>
+  <div id="content">
+    <div class="empty">
+      <div class="icon">✈</div>
+      <h3>Ready when you are</h3>
+      <p>
+        Configure your filters on the left and hit <strong>Search Flights</strong>.<br><br>
+        <strong>Running locally?</strong> Start the server with <code style="background:var(--s2);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:11px">node server.js</code> and leave the server field as-is.<br><br>
+        <strong>Cloud deployed?</strong> Paste your Render/Railway URL in the server field above.
+      </p>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+// ── CONFIG ──
+const POPULAR = [
+  // Default 5 selected
+  {city:'Vienna',   iata:'VIE', def:true},
+  {city:'Munich',   iata:'MUC', def:true},
+  {city:'Ljubljana',iata:'LJU', def:true},
+  {city:'Bergen',   iata:'BGO', def:true},
+  {city:'Oslo',     iata:'OSL', def:true},
+  // Others available
+  {city:'London',   iata:'LHR'},
+  {city:'Paris',    iata:'CDG'},
+  {city:'Amsterdam',iata:'AMS'},
+  {city:'Rome',     iata:'FCO'},
+  {city:'Barcelona',iata:'BCN'},
+  {city:'Athens',   iata:'ATH'},
+  {city:'Dubai',    iata:'DXB'},
+  {city:'Bangkok',  iata:'BKK'},
+  {city:'Istanbul', iata:'IST'},
+  {city:'Berlin',   iata:'BER'},
+  {city:'Lisbon',   iata:'LIS'},
+  {city:'Prague',   iata:'PRG'},
+  {city:'Copenhagen',iata:'CPH'},
+  {city:'Stockholm',iata:'ARN'},
+];
+
+// Two departure time slots (applies to both legs)
+const TIME_SLOTS = [
+  {id:'day',   name:'Daytime',   time:'10:00 – 21:00', h:[10,20]},
+  {id:'night', name:'Night',     time:'21:00 – 10:00', h_day:[21,23], h_night:[0,9]},
+];
+
+const STOPS = [{id:'0',lbl:'Direct'},{id:'1',lbl:'1 stop'},{id:'2',lbl:'2 stops'}];
+
+let selDests  = new Set();
+let timeFilter= new Set(['day','night']); // both on by default
+let maxStops  = '1';
+let sortMode  = 'price';
+let allResults= [];
+
+// ── INIT DATES ──
+const pad = n => String(n).padStart(2,'0');
+function fmtDate(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+const today = new Date();
+const in3w  = new Date(today); in3w.setDate(today.getDate()+21);
+const in4m  = new Date(today); in4m.setDate(today.getDate()+120);
+document.getElementById('dateFrom').value = fmtDate(in3w);
+document.getElementById('dateTo').value   = fmtDate(in4m);
+
+// Pre-select default destinations
+POPULAR.filter(d=>d.def).forEach(d=>selDests.add(d.iata+':'+d.city));
+
+// Server URL — auto-detect: if opened from non-localhost, use same origin
+(function initServerUrl(){
+  const loc = window.location;
+  const isLocal = loc.hostname === 'localhost' || loc.hostname === '127.0.0.1';
+  const url = isLocal ? 'http://localhost:3333' : loc.origin;
+  document.getElementById('serverUrl').value = url;
+  document.getElementById('serverDot').className = 'dot ok';
+})();
+
+function onServerChange(){
+  const v = document.getElementById('serverUrl').value.trim();
+  document.getElementById('serverDot').className = 'dot' + (v.startsWith('http') ? ' ok' : ' err');
+}
+function onKeyChange(){
+  document.getElementById('keyDot').className = 'keydot' + (document.getElementById('apiKey').value.trim().length > 10 ? ' ok' : '');
+}
+
+// ── DEST GRID ──
+function renderGrid(){
+  document.getElementById('destGrid').innerHTML = POPULAR.map(d => {
+    const k = d.iata+':'+d.city;
+    return `<button class="dbtn${selDests.has(k)?' on':''}" onclick="toggleDest('${k}')">
+      <div class="dc">${d.city}</div><div class="di">${d.iata}</div>
+    </button>`;
+  }).join('');
+}
+function toggleDest(k){ selDests.has(k)?selDests.delete(k):selDests.add(k); renderGrid(); renderTags(); }
+function addCustom(){
+  const v = document.getElementById('customIn').value.trim().toUpperCase().replace(/[^A-Z]/g,'').slice(0,3);
+  if(v.length<2) return;
+  selDests.add(v+':'+v);
+  document.getElementById('customIn').value=''; renderTags();
+}
+document.getElementById('customIn').addEventListener('keydown',e=>{ if(e.key==='Enter') addCustom(); });
+function renderTags(){
+  const el = document.getElementById('tags');
+  if(!selDests.size){ el.innerHTML='<span style="font-size:11px;font-family:var(--mono);color:var(--txt3)">none selected</span>'; return; }
+  el.innerHTML = [...selDests].map(k=>{
+    const[iata,city]=k.split(':');
+    return `<span class="tag">${city}<span class="x" onclick="removeDest('${k}')"> ×</span></span>`;
+  }).join('');
+}
+function removeDest(k){ selDests.delete(k); renderGrid(); renderTags(); }
+
+// ── STOPS ──
+function renderStops(){
+  document.getElementById('stopsRow').innerHTML = STOPS.map(s=>
+    `<button class="sbtn${maxStops===s.id?' on':''}" onclick="setStops('${s.id}')">${s.lbl}</button>`
+  ).join('');
+}
+function setStops(id){ maxStops=id; renderStops(); }
+
+// ── TIME SLOTS ──
+function renderTimeSlots(){
+  document.getElementById('timeSlots').innerHTML = TIME_SLOTS.map(s=>
+    `<div class="tslot${timeFilter.has(s.id)?' on':''}" onclick="toggleTime('${s.id}')">
+      <div class="tslot-dot"></div>
+      <span class="tslot-name">${s.name}</span>
+      <span class="tslot-time">${s.time}</span>
+    </div>`
+  ).join('');
+}
+function toggleTime(id){ timeFilter.has(id)?timeFilter.delete(id):timeFilter.add(id); renderTimeSlots(); }
+
+// Check if an HH:MM departure time passes the selected time filter
+function timeOk(timeStr){
+  if(!timeFilter.size) return true; // nothing selected = any time
+  if(!timeStr) return true;
+  const h = parseInt(timeStr.split(':')[0], 10);
+  for(const id of timeFilter){
+    const s = TIME_SLOTS.find(x=>x.id===id);
+    if(id==='day'  && h>=s.h[0] && h<=s.h[1]) return true;
+    if(id==='night'&& (h>=s.h_day[0] || h<=s.h_night[1])) return true;
+  }
+  return false;
+}
+
+// ── NIGHTS ──
+function syncN(){
+  let mn=+document.getElementById('minN').value, mx=+document.getElementById('maxN').value;
+  if(mn>mx){ document.getElementById('maxN').value=mn; mx=mn; }
+  document.getElementById('minNv').textContent=mn;
+  document.getElementById('maxNv').textContent=mx;
+}
+
+// ── DATE PAIR ──
+function buildDatePair(){
+  const from = new Date(document.getElementById('dateFrom').value);
+  const to   = new Date(document.getElementById('dateTo').value);
+  const mid  = Math.round((+document.getElementById('minN').value + +document.getElementById('maxN').value)/2);
+  // pick a departure date roughly in the first third of the window
+  const windowDays = Math.round((to-from)/86400000);
+  const offset = Math.min(Math.floor(windowDays/3), 14);
+  const dep = new Date(from); dep.setDate(from.getDate()+offset);
+  const ret = new Date(dep); ret.setDate(dep.getDate()+mid);
+  if(ret>to){ ret.setTime(to.getTime()); }
+  return { out: fmtDate(dep), ret: fmtDate(ret) };
+}
+
+// ── SORT & RENDER ──
+function setSort(m){
+  sortMode=m;
+  document.getElementById('sPrice').classList.toggle('on', m==='price');
+  document.getElementById('sDate').classList.toggle('on',  m==='date');
+  renderResults(allResults);
+}
+
+function stopCls(n){ return n===0?'d':n===1?'s1':'s2'; }
+function stopLbl(n){ return n===0?'Direct':n===1?'1 stop':n+' stops'; }
+
+function renderResults(results){
+  const c = document.getElementById('content');
+  document.getElementById('sortRow').style.display = results.length ? 'flex' : 'none';
+
+  if(!results.length){
+    c.innerHTML=`<div class="empty"><div class="icon">🔍</div><h3>No flights found</h3><p>Try widening filters — more stops, both time ranges, or a longer date window.</p></div>`;
+    return;
+  }
+
+  // Group by destination
+  const groups = {};
+  for(const r of results){
+    if(!groups[r.dest]) groups[r.dest]={ iata:r.dest, city:r.city||r.dest, flights:[] };
+    groups[r.dest].flights.push(r);
+  }
+
+  // Sort flights within each group
+  for(const g of Object.values(groups)){
+    g.flights.sort((a,b)=> sortMode==='price' ? a.price-b.price : a.outDate.localeCompare(b.outDate));
+  }
+
+  // Sort groups by cheapest price in each
+  const sortedGroups = Object.values(groups).sort((a,b)=>
+    Math.min(...a.flights.map(f=>f.price)) - Math.min(...b.flights.map(f=>f.price))
+  );
+
+  c.innerHTML = sortedGroups.map(g => {
+    const cheapest = Math.min(...g.flights.map(f=>f.price));
+    return `<div class="dest-section">
+      <div class="dest-header">
+        <div class="dest-header-left">
+          <span class="dest-name">${g.city}</span>
+          <span class="dest-iata">${g.iata}</span>
+        </div>
+        <div style="text-align:right">
+          <div class="dest-cheapest">from $${Math.round(cheapest)}</div>
+          <div class="dest-count">${g.flights.length} option${g.flights.length!==1?'s':''}</div>
+        </div>
+      </div>
+      <div class="results-grid">
+        ${g.flights.map(r=>`
+          <div class="rcard${r.price===cheapest?' best':''}">
+            <div>
+              ${r.price===cheapest?'<div class="best-badge">BEST PRICE</div>':''}
+              <div class="rairline">${r.airlines||'—'}</div>
+              <div class="rairline-sub">${r.dur||'—'} outbound</div>
+              <div class="rmeta">
+                <div class="rmeta-item">OUT <b>${r.outDate}${r.depTime?' @ '+r.depTime:''}</b></div>
+                <div class="rmeta-item">RET <b>${r.retDate}</b></div>
+              </div>
+              <span class="rstop ${stopCls(r.numStops)}">${stopLbl(r.numStops)}</span>
+            </div>
+            <div class="rprice-wrap">
+              <div class="rprice-n">$${Math.round(r.price)}</div>
+              <div class="rprice-s">per person</div>
+              <a class="rlink" href="${r.gurl}" target="_blank">↗ Google Flights</a>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── MAIN SEARCH ──
+async function doSearch(){
+  const serverUrl = document.getElementById('serverUrl').value.trim().replace(/\/$/,'');
+  const apiKey    = document.getElementById('apiKey').value.trim();
+
+  if(!serverUrl){ alert('Please enter the server URL.'); return; }
+  if(!selDests.size){ alert('Please select at least one destination.'); return; }
+  const dFrom = document.getElementById('dateFrom').value;
+  const dTo   = document.getElementById('dateTo').value;
+  if(!dFrom||!dTo){ alert('Please set travel window dates.'); return; }
+
+  const btn = document.getElementById('goBtn');
+  btn.disabled=true; btn.textContent='SEARCHING…';
+  document.getElementById('sortRow').style.display='none';
+  document.getElementById('progWrap').style.display='block';
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('content').innerHTML=`<div class="loader"><div class="spin"></div><p>Fetching live prices…</p></div>`;
+
+  allResults=[];
+  const dests = [...selDests];
+  const pair  = buildDatePair();
+  let done=0, errMsg='';
+
+  for(const destKey of dests){
+    const[iata, city] = destKey.split(':');
+    document.getElementById('progLbl').textContent = `Searching TLV → ${city} (${done+1}/${dests.length})…`;
+
+    try{
+      let url = `${serverUrl}/api/flights?dest=${iata}&out=${pair.out}&ret=${pair.ret}&stops=${maxStops}`;
+      if(apiKey) url += `&key=${encodeURIComponent(apiKey)}`;
+
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      if(data.error){
+        errMsg = data.error;
+        if(data.error.toLowerCase().includes('invalid')||data.error.toLowerCase().includes('key')) break;
+      } else {
+        const filtered = (data.results||[])
+          .filter(r => r.numStops <= parseInt(maxStops) && timeOk(r.depTime))
+          .map(r => ({...r, city}));
+        allResults.push(...filtered);
+      }
+    } catch(e){
+      errMsg = `Cannot reach server at ${serverUrl}. ${window.location.protocol==='file:'?'Open via http://localhost:3333 instead of opening the file directly.':'Check that your server is running.'}`;
+      break;
+    }
+
+    done++;
+    document.getElementById('progFill').style.width = Math.round(done/dests.length*100)+'%';
+    if(done < dests.length) await new Promise(r=>setTimeout(r,700));
+  }
+
+  btn.disabled=false; btn.textContent='SEARCH FLIGHTS';
+  document.getElementById('progFill').style.width='100%';
+  setTimeout(()=>{ document.getElementById('progWrap').style.display='none'; }, 600);
+
+  let html = errMsg ? `<div class="errbox">${errMsg}</div>` : '';
+  if(!allResults.length && !errMsg){
+    document.getElementById('content').innerHTML = html +
+      `<div class="empty"><div class="icon">🔍</div><h3>No results</h3><p>Try widening filters — more stops, both time ranges, or a longer window.</p></div>`;
+    return;
+  }
+  if(html) document.getElementById('content').innerHTML = html;
+  renderResults(allResults);
+}
+
+// ── BOOT ──
+renderGrid(); renderTags(); renderStops(); renderTimeSlots();
+</script>
+</body>
+</html>

@@ -169,7 +169,7 @@ body{display:flex;flex-direction:column}
     </div>
     <div>
       <div class="brand-name">TLV FLIGHT FINDER</div>
-      <div class="brand-sub">Round-trip from Tel Aviv</div>
+      <div class="brand-sub">Round-trip from Tel Aviv · v1.2</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -565,7 +565,10 @@ async function doSearch(){
 
   btn.disabled=false; btn.textContent='SEARCH FLIGHTS';
   document.getElementById('progFill').style.width='100%';
-  setTimeout(()=>{ document.getElementById('progWrap').style.display='none'; }, 600);
+  document.getElementById('progLbl').textContent =
+    `Done · searched ${pairs.length} date window${pairs.length>1?'s':''}:  ` +
+    pairs.map(p=>`${p.out} → ${p.ret}`).join('   |   ');
+  setTimeout(()=>{ document.getElementById('progWrap').style.display='none'; }, 4000);
 
   let html = errMsg ? `<div class="errbox">${errMsg}</div>` : '';
   if(!allResults.length && !errMsg){

@@ -386,18 +386,48 @@ function syncN(){
   document.getElementById('maxNv').textContent=mx;
 }
 
-// ── DATE PAIR ──
-function buildDatePair(){
-  const from = new Date(document.getElementById('dateFrom').value);
-  const to   = new Date(document.getElementById('dateTo').value);
-  const mid  = Math.round((+document.getElementById('minN').value + +document.getElementById('maxN').value)/2);
-  // pick a departure date roughly in the first third of the window
-  const windowDays = Math.round((to-from)/86400000);
-  const offset = Math.min(Math.floor(windowDays/3), 14);
-  const dep = new Date(from); dep.setDate(from.getDate()+offset);
-  const ret = new Date(dep); ret.setDate(dep.getDate()+mid);
-  if(ret>to){ ret.setTime(to.getTime()); }
-  return { out: fmtDate(dep), ret: fmtDate(ret) };
+// ── DATE PAIRS ──
+// Generates multiple (outbound, return) pairs spread across the travel window,
+// each respecting the min/max nights constraint.
+// Max 3 pairs to keep API credit usage predictable (3 credits per destination).
+function buildDatePairs(){
+  const from   = new Date(document.getElementById('dateFrom').value);
+  const to     = new Date(document.getElementById('dateTo').value);
+  const minN   = +document.getElementById('minN').value;
+  const maxN   = +document.getElementById('maxN').value;
+  const windowDays = Math.round((to - from) / 86400000);
+
+  // How many sample departure dates fit in the window given the min stay?
+  // e.g. 21-day window with 7-night min → departures on day 0, 7, 14
+  const maxPairs = 3;
+  const step = Math.max(minN, Math.floor(windowDays / maxPairs));
+  const pairs = [];
+
+  for(let i = 0; i < maxPairs; i++){
+    const depOffset = i * step;
+    if(depOffset >= windowDays) break;
+
+    const dep = new Date(from); dep.setDate(from.getDate() + depOffset);
+
+    // Try stays from minN up to maxN, pick the middle
+    const stayNights = Math.min(Math.round((minN + maxN) / 2), maxN);
+    const ret = new Date(dep); ret.setDate(dep.getDate() + stayNights);
+
+    // Return must still be within the window
+    if(ret > to) break;
+
+    pairs.push({ out: fmtDate(dep), ret: fmtDate(ret) });
+  }
+
+  // Fallback: at least one pair at the start of the window
+  if(!pairs.length){
+    const dep = new Date(from);
+    const ret = new Date(from); ret.setDate(from.getDate() + minN);
+    if(ret <= to) pairs.push({ out: fmtDate(dep), ret: fmtDate(ret) });
+    else pairs.push({ out: fmtDate(from), ret: fmtDate(to) });
+  }
+
+  return pairs;
 }
 
 // ── SORT & RENDER ──
@@ -494,37 +524,43 @@ async function doSearch(){
 
   allResults=[];
   const dests = [...selDests];
-  const pair  = buildDatePair();
+  const pairs = buildDatePairs();
+  const total = dests.length * pairs.length;
   let done=0, errMsg='';
 
+  outer:
   for(const destKey of dests){
     const[iata, city] = destKey.split(':');
-    document.getElementById('progLbl').textContent = `Searching TLV → ${city} (${done+1}/${dests.length})…`;
 
-    try{
-      let url = `${serverUrl}/api/flights?dest=${iata}&out=${pair.out}&ret=${pair.ret}&stops=${maxStops}`;
-      if(apiKey) url += `&key=${encodeURIComponent(apiKey)}`;
+    for(const pair of pairs){
+      document.getElementById('progLbl').textContent =
+        `Searching TLV → ${city}  ${pair.out} → ${pair.ret}  (${done+1}/${total})…`;
 
-      const res  = await fetch(url);
-      const data = await res.json();
+      try{
+        let url = `${serverUrl}/api/flights?dest=${iata}&out=${pair.out}&ret=${pair.ret}&stops=${maxStops}`;
+        if(apiKey) url += `&key=${encodeURIComponent(apiKey)}`;
 
-      if(data.error){
-        errMsg = data.error;
-        if(data.error.toLowerCase().includes('invalid')||data.error.toLowerCase().includes('key')) break;
-      } else {
-        const filtered = (data.results||[])
-          .filter(r => r.numStops <= parseInt(maxStops) && timeOk(r.depTime))
-          .map(r => ({...r, city}));
-        allResults.push(...filtered);
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        if(data.error){
+          errMsg = data.error;
+          if(data.error.toLowerCase().includes('invalid')||data.error.toLowerCase().includes('key')) break outer;
+        } else {
+          const filtered = (data.results||[])
+            .filter(r => r.numStops <= parseInt(maxStops) && timeOk(r.depTime))
+            .map(r => ({...r, city}));
+          allResults.push(...filtered);
+        }
+      } catch(e){
+        errMsg = `Cannot reach server at ${serverUrl}. ${window.location.protocol==='file:'?'Open via http://localhost:3333 instead of opening the file directly.':'Check that your server is running.'}`;
+        break outer;
       }
-    } catch(e){
-      errMsg = `Cannot reach server at ${serverUrl}. ${window.location.protocol==='file:'?'Open via http://localhost:3333 instead of opening the file directly.':'Check that your server is running.'}`;
-      break;
-    }
 
-    done++;
-    document.getElementById('progFill').style.width = Math.round(done/dests.length*100)+'%';
-    if(done < dests.length) await new Promise(r=>setTimeout(r,700));
+      done++;
+      document.getElementById('progFill').style.width = Math.round(done/total*100)+'%';
+      if(done < total) await new Promise(r=>setTimeout(r,700));
+    }
   }
 
   btn.disabled=false; btn.textContent='SEARCH FLIGHTS';
